@@ -169,7 +169,9 @@ class CompletionFinder(object):
 
         if output_stream is None:
             try:
-                output_stream = os.fdopen(8, "wb")
+                import tempfile
+                compreply = os.path.join(tempfile.gettempdir(), 'argcomplete_compreply')
+                output_stream = open(compreply, 'wb')
             except:
                 debug("Unable to open fd 8 for writing, quitting")
                 exit_method(1)
