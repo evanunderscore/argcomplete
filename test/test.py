@@ -1218,6 +1218,22 @@ class TestBashGlobal(TestBash):
         """Test completing a console_script for a package from a wheel."""
         self._test_console_script(package=True, wheel=True)
 
+    def test_script_cached_decision(self):
+        """Test a script is only checked for the marker once."""
+        prog = os.path.join(TEST_DIR, 'prog')
+        with TempDir(prefix='test_dir_script', dir='.'):
+            shutil.copy(prog, '.')
+            self.sh.run_command('cd ' + os.getcwd())
+            self.assertEqual(self.sh.run_command('./prog basic f\t'), 'foo\r\n')
+            with open('prog') as f:
+                lines = f.read()
+            assert '# PYTHON_ARGCOMPLETE_OK' in lines
+            with open('prog', 'w') as f:
+                f.writelines(x for x in lines if x != '# PYTHON_ARGCOMPLETE_OK')
+            # Confirm completion still works after removing the marker,
+            # proving that the global completion script is now being bypassed.
+            self.assertEqual(self.sh.run_command('./prog basic f\t'), 'foo\r\n')
+
 
 class TestTcsh(_TestSh, unittest.TestCase):
     expected_failures = [

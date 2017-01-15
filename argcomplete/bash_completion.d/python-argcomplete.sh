@@ -57,6 +57,12 @@ _python_argcomplete_global() {
         fi
     fi
 
+    if [[ $ARGCOMPLETE == 1 ]]; then
+        # Returning 124 causes completion to be restarted,
+        # which will find the newly-registered completion function.
+        eval "$(register-python-argcomplete "$1")" && return 124
+    fi
+
     if [[ $ARGCOMPLETE != 0 ]]; then
         local IFS=$(echo -e '\v')
         COMPREPLY=( $(_ARGCOMPLETE_IFS="$IFS" \
