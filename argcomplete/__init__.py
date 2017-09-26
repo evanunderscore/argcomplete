@@ -271,13 +271,11 @@ class CompletionFinder(object):
             completer.visited_positionals.append(parser)
             completer.active_parsers.append(parser)
 
-            if isinstance(parser, IntrospectiveArgumentParser):
-                return
-
-            classname = "MonkeyPatchedIntrospectiveArgumentParser"
-            if USING_PYTHON2:
-                classname = bytes(classname)
-            parser.__class__ = type(classname, (IntrospectiveArgumentParser, parser.__class__), {})
+            if not isinstance(parser, IntrospectiveArgumentParser):
+                classname = "MonkeyPatchedIntrospectiveArgumentParser"
+                if USING_PYTHON2:
+                    classname = bytes(classname)
+                parser.__class__ = type(classname, (IntrospectiveArgumentParser, parser.__class__), {})
 
             for action in parser._actions:
 
