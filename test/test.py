@@ -3,7 +3,7 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import os, sys, shutil, argparse, subprocess, unittest, io
+import os, sys, shutil, argparse, subprocess, unittest, stat
 import pexpect, pexpect.replwrap
 from tempfile import TemporaryFile, NamedTemporaryFile, mkdtemp
 
@@ -1004,6 +1004,21 @@ class _TestSh(object):
             setattr(cls, name, wrapped)
         super(_TestSh, cls).setUpClass(*args, **kwargs)
 
+        cls.prog_dir = mkdtemp()
+        with open(os.path.join(TEST_DIR, 'prog')) as f:
+            assert next(f) == '#!/usr/bin/env python\n'
+            prog = f.readlines()
+        prog_path = os.path.join(cls.prog_dir, 'prog')
+        with open(prog_path, 'w') as f:
+            print('#!{}'.format(sys.executable), file=f)
+            f.writelines(prog)
+        # chmod +x $prog_path
+        os.chmod(prog_path, os.stat(prog_path).st_mode | stat.S_IEXEC)
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.prog_dir)
+
     def setUp(self):
         raise NotImplementedError
 
@@ -1111,7 +1126,7 @@ class TestBash(_TestSh, unittest.TestCase):
 
     def setUp(self):
         sh = pexpect.replwrap.bash()
-        path = ':'.join([os.path.join(BASE_DIR, 'scripts'), TEST_DIR, '$PATH'])
+        path = ':'.join([os.path.join(BASE_DIR, 'scripts'), self.prog_dir, '$PATH'])
         sh.run_command('export PATH={0}'.format(path))
         sh.run_command('export PYTHONPATH={0}'.format(BASE_DIR))
         # Disable the "python" module provided by bash-completion
@@ -1139,13 +1154,19 @@ class TestBash(_TestSh, unittest.TestCase):
 class TestBashGlobal(TestBash):
     install_cmd = 'eval "$(activate-global-python-argcomplete --dest=-)"'
 
+    def setUp(self):
+        super().setUp()
+        self.python = os.path.basename(sys.executable)
+        if self.sh.run_command('which ' + self.python).strip() != sys.executable:
+            self.fail('could not rerun interpreter as {}' + self.python)
+
     def test_python_completion(self):
         self.sh.run_command('cd ' + TEST_DIR)
-        self.assertEqual(self.sh.run_command('python ./prog basic f\t'), 'foo\r\n')
+        self.assertEqual(self.sh.run_command(self.python + ' ./prog basic f\t'), 'foo\r\n')
 
     def test_python_filename_completion(self):
         self.sh.run_command('cd ' + TEST_DIR)
-        self.assertEqual(self.sh.run_command('python ./pro\tbasic f\t'), 'foo\r\n')
+        self.assertEqual(self.sh.run_command(self.python + ' ./pro\tbasic f\t'), 'foo\r\n')
 
     def test_python_not_executable(self):
         """Test completing a script that cannot be run directly."""
@@ -1157,7 +1178,7 @@ class TestBashGlobal(TestBash):
             # Ensure prog is no longer able to be run as "./prog".
             self.assertIn('<<126>>', self.sh.run_command('./prog; echo "<<$?>>"'))
             # Ensure completion still functions when run via python.
-            self.assertEqual(self.sh.run_command('python ./prog basic f\t'), 'foo\r\n')
+            self.assertEqual(self.sh.run_command(self.python + ' ./prog basic f\t'), 'foo\r\n')
 
     def test_python_module(self):
         """Test completing a module run with python -m."""
@@ -1167,7 +1188,7 @@ class TestBashGlobal(TestBash):
             open('package/__init__.py', 'w').close()
             shutil.copy(prog, 'package/prog.py')
             self.sh.run_command('cd ' + os.getcwd())
-            self.assertEqual(self.sh.run_command('python -m package.prog basic f\t'), 'foo\r\n')
+            self.assertEqual(self.sh.run_command(self.python + ' -m package.prog basic f\t'), 'foo\r\n')
 
 
 class TestTcsh(_TestSh, unittest.TestCase):
@@ -1183,7 +1204,7 @@ class TestTcsh(_TestSh, unittest.TestCase):
 
     def setUp(self):
         sh = Shell('tcsh')
-        path = ' '.join([os.path.join(BASE_DIR, 'scripts'), TEST_DIR, '$path'])
+        path = ' '.join([os.path.join(BASE_DIR, 'scripts'), self.prog_dir, '$path'])
         sh.run_command('set path = ({0})'.format(path))
         sh.run_command('setenv PYTHONPATH {0}'.format(BASE_DIR))
         output = sh.run_command('eval `register-python-argcomplete --shell tcsh prog`')
