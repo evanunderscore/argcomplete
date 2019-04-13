@@ -21,6 +21,13 @@ setup(
     packages=find_packages(exclude=['test']),
     scripts=glob.glob('scripts/*'),
     package_data={'argcomplete': ['bash_completion.d/python-argcomplete.sh']},
+    entry_points={
+        'console_scripts': [
+            'activate-global-python-argcomplete=argcomplete.activate_global_python_argcomplete:main',
+            'python-argcomplete-check-easy-install-script=argcomplete.python_argcomplete_check_easy_install_script:main',
+            'register-python-argcomplete=argcomplete.register_python_argcomplete:main',
+        ]
+    },
     zip_safe=False,
     include_package_data=True,
     platforms=['MacOS X', 'Posix'],

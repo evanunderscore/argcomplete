@@ -1126,7 +1126,7 @@ class TestBash(_TestSh, unittest.TestCase):
 
     def setUp(self):
         sh = pexpect.replwrap.bash()
-        path = ':'.join([os.path.join(BASE_DIR, 'scripts'), self.prog_dir, '$PATH'])
+        path = ':'.join([self.prog_dir, '$PATH'])
         sh.run_command('export PATH={0}'.format(path))
         sh.run_command('export PYTHONPATH={0}'.format(BASE_DIR))
         # Disable the "python" module provided by bash-completion
@@ -1204,7 +1204,7 @@ class TestTcsh(_TestSh, unittest.TestCase):
 
     def setUp(self):
         sh = Shell('tcsh')
-        path = ' '.join([os.path.join(BASE_DIR, 'scripts'), self.prog_dir, '$path'])
+        path = ' '.join([self.prog_dir, '$path'])
         sh.run_command('set path = ({0})'.format(path))
         sh.run_command('setenv PYTHONPATH {0}'.format(BASE_DIR))
         output = sh.run_command('eval `register-python-argcomplete --shell tcsh prog`')
