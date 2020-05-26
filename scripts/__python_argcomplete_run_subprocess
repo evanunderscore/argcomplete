@@ -26,7 +26,11 @@ else:
 # file descriptors are inherited by py.exe,
 # py.exe won't pass them to the Python process it spawns anyway.
 # See also: https://www.python.org/dev/peps/pep-0446/#inheritance-of-file-descriptors-on-windows
-stdout_handle = msvcrt.get_osfhandle(1)
+# Create a pipe to communicate with the child process.
+read_fd, write_fd = os.pipe()
+# File descriptors returned by os.pipe() are not inheritable by default.
+os.set_inheritable(write_fd, True)
+stdout_handle = msvcrt.get_osfhandle(write_fd)
 stderr_handle = msvcrt.get_osfhandle(2)
 env = os.environ.copy()
 env['_ARGCOMPLETE_STDOUT_HANDLE'] = str(stdout_handle)
@@ -47,4 +51,12 @@ code = subprocess.call(
     close_fds=False,
     env=env,
 )
+
+# Child has finished executing; close the pipe.
+os.close(write_fd)
+# Read all data from the child.
+captured_stdout = os.fdopen(read_fd, 'r').read()
+# Send the captured stdout on our own stdout.
+print(captured_stdout, end='')
+
 sys.exit(code)
