@@ -9,6 +9,18 @@ bashcode = r'''
 # Run something, muting output or redirecting it to the debug stream
 # depending on the value of _ARC_DEBUG.
 __python_argcomplete_run() {
+    if [[ ! -z "$ARGCOMPLETE_USE_TEMPFILES" ]]; then
+        local tmpfile="$(mktemp)"
+        if [[ -z "$_ARC_DEBUG" ]]; then
+            _ARGCOMPLETE_STDOUT_FILENAME="$tmpfile" "$@" 8>&1 9>&2 1>/dev/null 2>&1
+        else
+            _ARGCOMPLETE_STDOUT_FILENAME="$tmpfile" "$@" 8>&1 9>&2 1>&9 2>&1
+        fi
+        local code=$?
+        cat "$tmpfile"
+        rm "$tmpfile"
+        return $code
+    fi
     if [[ -z "$_ARC_DEBUG" ]]; then
         "$@" 8>&1 9>&2 1>/dev/null 2>&1
     else
